@@ -9,8 +9,9 @@ namespace TrafficSensorApp
     public class TrafficMessage
     {
         public string location { get; set; }
-        public int averageSpeed { get; set; }
-        public int numberofCars { get; set; }
+        public int sensorValue { get; set; }
+        public string sensorId { get; set; }
+        public string sensorType { get; set; }
     }
 
 }

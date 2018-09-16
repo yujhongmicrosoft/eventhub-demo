@@ -22,7 +22,6 @@ namespace TrafficSensorApp
                 System.Console.WriteLine("Please enter Arguments: Location(string), AvgSpeed(int), NumofCars(int)");
                 return 1;
             }
-
             int loc;
             int avgspeed;
             int numcars;
@@ -34,17 +33,28 @@ namespace TrafficSensorApp
                 System.Console.WriteLine("Please enter correct type for arguments");
                 return 1;
             }
-            var message = new TrafficMessage();
-            message.location = args[0];
-            message.averageSpeed = avgspeed;
-            message.numberofCars = numcars;
-            var ehMessage = JsonConvert.SerializeObject(message);
+            var messageSpeed = new TrafficMessage();
+            messageSpeed.location = args[0];
+            messageSpeed.sensorType = "averageSpeed";
+            messageSpeed.sensorValue = avgspeed;
+            messageSpeed.sensorId = Guid.NewGuid().ToString("N");
+
+            var messageCars = new TrafficMessage();
+            messageCars.location = args[0];
+            messageCars.sensorType = "numberofCars";
+            messageCars.sensorValue = numcars;
+            messageCars.sensorId = messageSpeed.sensorId;
+
+            var ehMessageSpeed = JsonConvert.SerializeObject(messageSpeed);
+            var ehMessageCars = JsonConvert.SerializeObject(messageCars);
             var eventHubClient = EventHubClient.CreateFromConnectionString(connection, eventHubName);
             while (true)
             {
                 try
                 {
-                    eventHubClient.Send(new EventData(Encoding.UTF8.GetBytes(ehMessage)));
+                    Console.WriteLine("" + messageSpeed.sensorId);
+                    eventHubClient.Send(new EventData(Encoding.UTF8.GetBytes(ehMessageSpeed)));
+                    eventHubClient.Send(new EventData(Encoding.UTF8.GetBytes(ehMessageCars)));
                     Console.WriteLine("Successfully sent message");
 
                 }
