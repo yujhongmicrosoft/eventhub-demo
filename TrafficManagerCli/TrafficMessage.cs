@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TrafficSensorApp
+namespace TrafficManagerCli
 {
     public class TrafficMessage
     {
@@ -13,5 +13,4 @@ namespace TrafficSensorApp
         public string sensorId { get; set; }
         public string sensorType { get; set; }
     }
-
 }
