@@ -86,6 +86,7 @@
   "variables": {
      "functionAppName": "[parameters('appName')]",
     "hostingPlanName": "[parameters('appName')]",
+    "eventHubName" : "[parameters('eventHubName')]",
     "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'azfunctions')]",
     "storageAccountid": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]"
     "cosmosDbAccountName": "[concat('db-', uniqueString(resourceGroup().id))]",
@@ -153,7 +154,9 @@
       "kind": "functionapp",
       "dependsOn": [
         "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName'))]",
+        "[resourceId('EventHubs', parameters('eventHubName'))]"
       ],
       "properties": {
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
@@ -172,8 +175,12 @@
               "value": "[concat(reference(concat('Microsoft.DocumentDb/databaseAccounts/', variables('cosmosDbAccountName'))).documentEndpoint, '@', listKeys(resourceId('Microsoft.DocumentDb/databaseAccounts', variables('cosmosDbAccountName')), '2015-04-08').primaryMasterKey)]"
             },
             {
-              "name": "WEBSITE_CONTENTSHARE",
-              "value": "[toLower(variables('functionAppName'))]"
+              "name": "EventHubConnection",
+              "value": "[listkeys(variables('authRuleResourceId'), '2017-04-01').primaryConnectionString]"
+            },
+            {
+              "name": "PowerBIEndpoint",
+              "value": ""
             },
             {
               "name": "FUNCTIONS_EXTENSION_VERSION",
