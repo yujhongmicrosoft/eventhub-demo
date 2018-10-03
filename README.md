@@ -28,7 +28,7 @@ To run locally you will additionally need:
 
 After clicking on the "Deploy to Azure Gov" button below, you will be prompted with a ARM deployment template in the portal.  Enter the parameters and click Create.
 This will set up the Event Hub, the Function application, and the Cosmos Database. 
-<a href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fyujhongmicrosoft%2Fgov-function-sample%2Fmaster%2Fazuredeploy.json" target="_blank">
+<a href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fyujhongmicrosoft%2Feventhub-demo%2Fmaster%2Fazuredeploy.json" target="_blank">
     <img src="http://azuredeploy.net/AzureGov.png" />
 </a> 
 
