@@ -185,10 +185,6 @@
             {
               "name": "FUNCTIONS_EXTENSION_VERSION",
               "value": "~1"
-            },
-            {
-              "name": "WEBSITE_NODE_DEFAULT_VERSION",
-              "value": "6.5.0"
             }
           ]
         },
@@ -198,7 +194,7 @@
           "name": "web",
           "type": "sourcecontrols",
           "dependsOn": [
-            "[resourceId('Microsoft.Web/Sites', variables('functionAppName'))]"
+            "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
           ],
           "properties": {
             "RepoUrl": "[parameters('repoURL')]",
