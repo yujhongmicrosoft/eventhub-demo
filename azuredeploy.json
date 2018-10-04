@@ -1,259 +1,260 @@
 {
-  "$schema": "http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "namespaceName": {
-      "type": "string",
-      "metadata": {
-        "description": "Name of EventHub namespace"
-      }
-    },
-    "eventhubSku": {
-      "type": "string",
-      "allowedValues": [
-        "Basic",
-        "Standard"
-      ],
-      "defaultValue": "Standard",
-      "metadata": {
-        "description": "The messaging tier for service Bus namespace"
-      }
-    },
-    "skuCapacity": {
-      "type": "int",
-      "allowedValues": [
-        1,
-        2,
-        4
-      ],
-      "defaultValue": 1,
-      "metadata": {
-        "description": "MessagingUnits for premium namespace"
-      }
-    },
-    "eventHubName": {
-      "type": "string",
-      "metadata": {
-        "description": "Name of Event Hub"
-      }
-    },
-    "consumerGroupName": {
-      "type": "string",
-      "metadata": {
-        "description": "Name of Consumer Group"
-      }
-    },
-     "appName": {
-      "type": "string",
-      "metadata": {
-        "description": "The name of the function app that you wish to create."
-      }
-    },
-    "storageAccountType": {
-      "type": "string",
-      "defaultValue": "Standard_LRS",
-      "allowedValues": [
-        "Standard_LRS",
-        "Standard_GRS",
-        "Standard_RAGRS"
-      ],
-      "metadata": {
-        "description": "Storage Account type"
-      }
-    },
-    "repoURL": {
-      "type": "string",
-      "defaultValue": "https://github.com/yujhongmicrosoft/eventhub-demo.git",
-      "metadata": {
-        "description": "The URL for the GitHub repository that contains the project to deploy."
-      }
-    },
-    "branch": {
-      "type": "string",
-      "defaultValue": "master",
-      "metadata": {
-        "description": "The branch of the GitHub repository to use."
-      }
-    },
-    "location": {
-      "type": "string",
-      "defaultValue": "[resourceGroup().location]",
-      "metadata": {
-        "description": "Location for all resources."
-      }
-    }
-  },
-  "variables": {
-     "functionAppName": "[parameters('appName')]",
-    "hostingPlanName": "[parameters('appName')]",
-    "eventHubName" : "[parameters('eventHubName')]",
-    "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'azfunctions')]",
-    "storageAccountid": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]"
-    "cosmosDbAccountName": "[concat('db-', uniqueString(resourceGroup().id))]",
-    "cosmosOfferType": "Standard",
-    "defaultSASKeyName": "RootManageSharedAccessKey",
-    "authRuleResourceId": "[resourceId('Microsoft.EventHub/namespaces/authorizationRules', parameters('namespaceName'), variables('defaultSASKeyName'))]"
-  },
-  "resources": [
-     {
-      "apiVersion": "2015-04-08",
-      "type": "Microsoft.DocumentDB/databaseAccounts",
-      "kind": "GlobalDocumentDB",
-      "name": "[variables('cosmosDbAccountName')]",
-      "location": "[resourceGroup().location]",
-      "properties": {
-        "name": "[variables('cosmosDbAccountName')]",
-        "databaseAccountOfferType": "[variables('cosmosOfferType')]",
-        "locations": [
-          {
-            "locationName": "[resourceGroup().location]",
-            "failoverPriority": 0
-          },
-          {
-            "locationName": "[resourceGroup().location]",
-            "failoverPriority": 1
-          }
-        ],
-        "capabilities": [
-          {
-            "name": "SQL"
-          }
-        ]
-      },
-      "tags": {
-        "defaultExperience": "SQL",
-        "displayName":  "CosmosDB"
-      }
-    }, 
-    {
-      "type": "Microsoft.Storage/storageAccounts",
-      "name": "[variables('storageAccountName')]",
-      "apiVersion": "2016-12-01",
-      "location": "[parameters('location')]",
-      "kind": "Storage",
-      "sku": {
-        "name": "[parameters('storageAccountType')]"
-      }
-    },
-    {
-      "type": "Microsoft.Web/serverfarms",
-      "apiVersion": "2015-04-01",
-      "name": "[variables('hostingPlanName')]",
-      "location": "[parameters('location')]",
-      "properties": {
-        "name": "[variables('hostingPlanName')]",
-        "computeMode": "Dynamic",
-        "sku": "Dynamic"
-      }
-    },
-    {
-      "apiVersion": "2015-08-01",
-      "type": "Microsoft.Web/sites",
-      "name": "[variables('functionAppName')]",
-      "location": "[parameters('location')]",
-      "kind": "functionapp",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName'))]",
-        "[resourceId('EventHubs', parameters('eventHubName'))]"
-      ],
-      "properties": {
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-        "siteConfig": {
-          "appSettings": [
-            {
-              "name": "AzureWebJobsDashboard",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
-            },
-            {
-              "name": "AzureWebJobsStorage",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
-            },
-            {
-              "name": "CosmosConnection",
-              "value": "[concat(reference(concat('Microsoft.DocumentDb/databaseAccounts/', variables('cosmosDbAccountName'))).documentEndpoint, '@', listKeys(resourceId('Microsoft.DocumentDb/databaseAccounts', variables('cosmosDbAccountName')), '2015-04-08').primaryMasterKey)]"
-            },
-            {
-              "name": "EventHubConnection",
-              "value": "[listkeys(variables('authRuleResourceId'), '2017-04-01').primaryConnectionString]"
-            },
-            {
-              "name": "PowerBIEndpoint",
-              "value": ""
-            },
-            {
-              "name": "FUNCTIONS_EXTENSION_VERSION",
-              "value": "~1"
+    "$schema": "http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "namespaceName": {
+            "type": "String",
+            "metadata": {
+                "description": "Name of EventHub namespace"
             }
-          ]
         },
-        "resources": [
-        {
-          "apiVersion": "2015-08-01",
-          "name": "web",
-          "type": "sourcecontrols",
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
-          ],
-          "properties": {
-            "RepoUrl": "[parameters('repoURL')]",
-            "branch": "[parameters('branch')]",
-            "IsManualIntegration": true
-          }
-        }
-      ]
-      }
-    }
-    {
-      "apiVersion": "2017-04-01",
-      "name": "[parameters('namespaceName')]",
-      "type": "Microsoft.EventHub/Namespaces",
-      "location": "[parameters('location')]",
-      "sku": {
-        "name": "[parameters('eventhubSku')]",
-        "tier": "[parameters('eventhubSku')]",
-        "capacity": "[parameters('skuCapacity')]"
-      },
-      "tags": {
-        "tag1": "value1",
-        "tag2": "value2"
-      },
-      "properties": {},
-      "resources": [
-        {
-          "apiVersion": "2017-04-01",
-          "name": "[parameters('eventHubName')]",
-          "type": "EventHubs",
-          "dependsOn": [
-            "[concat('Microsoft.EventHub/namespaces/', parameters('namespaceName'))]"
-          ],
-          "properties": {},
-          "resources": [
-            {
-              "apiVersion": "2017-04-01",
-              "name": "[parameters('consumerGroupName')]",
-              "type": "ConsumerGroups",
-              "dependsOn": [
-                "[parameters('eventHubName')]"
-              ],
-              "properties": {
-                "userMetadata": "User Metadata goes here"
-              }
+        "eventhubSku": {
+            "defaultValue": "Standard",
+            "allowedValues": [
+                "Basic",
+                "Standard"
+            ],
+            "type": "String",
+            "metadata": {
+                "description": "The messaging tier for service Bus namespace"
             }
-          ]
+        },
+        "skuCapacity": {
+            "defaultValue": 1,
+            "allowedValues": [
+                1,
+                2,
+                4
+            ],
+            "type": "Int",
+            "metadata": {
+                "description": "MessagingUnits for premium namespace"
+            }
+        },
+        "eventHubName": {
+            "type": "String",
+            "metadata": {
+                "description": "Name of Event Hub"
+            }
+        },
+        "consumerGroupName": {
+            "type": "String",
+            "metadata": {
+                "description": "Name of Consumer Group"
+            }
+        },
+        "appName": {
+            "type": "String",
+            "metadata": {
+                "description": "The name of the function app that you wish to create."
+            }
+        },
+        "storageAccountType": {
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_GRS",
+                "Standard_RAGRS"
+            ],
+            "type": "String",
+            "metadata": {
+                "description": "Storage Account type"
+            }
+        },
+        "repoURL": {
+            "defaultValue": "https://github.com/yujhongmicrosoft/eventhub-demo.git",
+            "type": "String",
+            "metadata": {
+                "description": "The URL for the GitHub repository that contains the project to deploy."
+            }
+        },
+        "branch": {
+            "defaultValue": "master",
+            "type": "String",
+            "metadata": {
+                "description": "The branch of the GitHub repository to use."
+            }
+        },
+        "location": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String",
+            "metadata": {
+                "description": "Location for all resources."
+            }
         }
-      ]
-    }
-  ],
-  "outputs": {
-    "NamespaceConnectionString": {
-      "type": "string",
-      "value": "[listkeys(variables('authRuleResourceId'), '2017-04-01').primaryConnectionString]"
     },
-    "SharedAccessPolicyPrimaryKey": {
-      "type": "string",
-      "value": "[listkeys(variables('authRuleResourceId'), '2017-04-01').primaryKey]"
+    "variables": {
+        "functionAppName": "[parameters('appName')]",
+        "hostingPlanName": "[parameters('appName')]",
+        "eventHubName": "[parameters('eventHubName')]",
+        "namespaceName": "[parameters('namespaceName')]",
+        "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'azfunctions')]",
+        "storageAccountid": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+        "cosmosDbAccountName": "[concat('db-', uniqueString(resourceGroup().id))]",
+        "cosmosOfferType": "Standard",
+        "defaultSASKeyName": "RootManageSharedAccessKey",
+        "authRuleResourceId": "[resourceId('Microsoft.EventHub/namespaces/authorizationRules', parameters('namespaceName'), variables('defaultSASKeyName'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts",
+            "kind": "GlobalDocumentDB",
+            "name": "[variables('cosmosDbAccountName')]",
+            "apiVersion": "2015-04-08",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "defaultExperience": "SQL",
+                "displayName": "CosmosDB"
+            },
+            "properties": {
+                "name": "[variables('cosmosDbAccountName')]",
+                "databaseAccountOfferType": "[variables('cosmosOfferType')]",
+                "locations": [
+                    {
+                        "locationName": "[resourceGroup().location]",
+                        "failoverPriority": 0
+                    },
+                    {
+                        "locationName": "[resourceGroup().location]",
+                        "failoverPriority": 1
+                    }
+                ],
+                "capabilities": [
+                    {
+                        "name": "SQL"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "[parameters('storageAccountType')]"
+            },
+            "kind": "Storage",
+            "name": "[variables('storageAccountName')]",
+            "apiVersion": "2016-12-01",
+            "location": "[parameters('location')]"
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "name": "[variables('hostingPlanName')]",
+            "apiVersion": "2015-04-01",
+            "location": "[parameters('location')]",
+            "properties": {
+                "name": "[variables('hostingPlanName')]",
+                "computeMode": "Dynamic",
+                "sku": "Dynamic"
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "kind": "functionapp",
+            "name": "[variables('functionAppName')]",
+            "apiVersion": "2015-08-01",
+            "location": "[parameters('location')]",
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsDashboard",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "CosmosConnection",
+                            "value": "[concat(reference(concat('Microsoft.DocumentDb/databaseAccounts/', variables('cosmosDbAccountName'))).documentEndpoint, '@', listKeys(resourceId('Microsoft.DocumentDb/databaseAccounts', variables('cosmosDbAccountName')), '2015-04-08').primaryMasterKey)]"
+                        },
+                        {
+                            "name": "EventHubConnection",
+                            "value": "[listkeys(variables('authRuleResourceId'), '2017-04-01').primaryConnectionString]"
+                        },
+                        {
+                            "name": "PowerBIEndpoint",
+                            "value": ""
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~1"
+                        }
+                    ]
+                },
+                "resources": [
+                    {
+                        "apiVersion": "2015-08-01",
+                        "name": "web",
+                        "type": "sourcecontrols",
+                        "dependsOn": [
+                            "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
+                        ],
+                        "properties": {
+                            "RepoUrl": "[parameters('repoURL')]",
+                            "branch": "[parameters('branch')]",
+                            "IsManualIntegration": true
+                        }
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName'))]",
+                "[resourceId('Microsoft.EventHub/Namespaces', variables('namespaceName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.EventHub/Namespaces",
+            "sku": {
+                "name": "[parameters('eventhubSku')]",
+                "tier": "[parameters('eventhubSku')]",
+                "capacity": "[parameters('skuCapacity')]"
+            },
+            "name": "[variables('namespaceName')]",
+            "apiVersion": "2017-04-01",
+            "location": "[parameters('location')]",
+            "tags": {
+                "tag1": "value1",
+                "tag2": "value2"
+            },
+            "properties": {},
+            "resources": [
+                {
+                    "type": "EventHubs",
+                    "name": "[variables('eventHubName')]",
+                    "apiVersion": "2017-04-01",
+                    "properties": {},
+                    "resources": [
+                        {
+                            "type": "ConsumerGroups",
+                            "name": "[parameters('consumerGroupName')]",
+                            "apiVersion": "2017-04-01",
+                            "properties": {
+                                "userMetadata": "User Metadata goes here"
+                            },
+                            "dependsOn": [
+                                "[variables('eventHubName')]"
+                            ]
+                        }
+                    ],
+                    "dependsOn": [
+                        "[concat('Microsoft.EventHub/namespaces/', parameters('namespaceName'))]"
+                    ]
+                }
+            ]
+        }
+    ],
+    "outputs": {
+        "NamespaceConnectionString": {
+            "type": "String",
+            "value": "[listkeys(variables('authRuleResourceId'), '2017-04-01').primaryConnectionString]"
+        },
+        "SharedAccessPolicyPrimaryKey": {
+            "type": "String",
+            "value": "[listkeys(variables('authRuleResourceId'), '2017-04-01').primaryKey]"
+        }
     }
-  }
 }
